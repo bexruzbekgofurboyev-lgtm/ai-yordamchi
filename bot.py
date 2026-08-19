@@ -88,7 +88,10 @@ def ask_gemini(prompt: str, system_instruction: str = "") -> str:
             json=payload,
             timeout=30,
         )
-        response.raise_for_status()
+        if response.status_code != 200:
+            safe_body = response.text.replace(GEMINI_API_KEY, "[KALIT_YASHIRILGAN]")[:800]
+            logger.error(f"Gemini API xatosi: {response.status_code} - {safe_body}")
+            return "Kechirasiz, hozir AI bilan bog'lanishda xatolik yuz berdi. Birozdan so'ng qayta urinib ko'ring."
         result = response.json()
         return result["candidates"][0]["content"]["parts"][0]["text"]
     except Exception as e:
@@ -205,17 +208,21 @@ async def clear_done(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None
 
 
 async def debug_gemini(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Vaqtinchalik diagnostika: kalit qaysi modellarga ruxsatli ekanini tekshiradi."""
+    """Vaqtinchalik diagnostika: generateContent so'rovining to'liq javobini ko'rsatadi."""
     await update.message.reply_chat_action("typing")
     try:
-        response = requests.get(
-            "https://generativelanguage.googleapis.com/v1beta/models",
-            headers={"x-goog-api-key": GEMINI_API_KEY},
+        response = requests.post(
+            GEMINI_URL,
+            headers={
+                "Content-Type": "application/json",
+                "x-goog-api-key": GEMINI_API_KEY,
+            },
+            json={"contents": [{"parts": [{"text": "Salom"}]}]},
             timeout=30,
         )
         safe_body = response.text.replace(GEMINI_API_KEY, "[YASHIRILGAN]")[:1500]
         await update.message.reply_text(
-            f"Status kod: {response.status_code}\n\nJavob:\n{safe_body}"
+            f"URL: {GEMINI_URL}\n\nStatus kod: {response.status_code}\n\nJavob:\n{safe_body}"
         )
     except Exception as e:
         safe_error = str(e).replace(GEMINI_API_KEY, "[YASHIRILGAN]")
