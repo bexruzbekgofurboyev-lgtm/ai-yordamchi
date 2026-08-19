@@ -68,7 +68,13 @@ def save_user_tasks(user_id: str, tasks: list) -> None:
 
 def ask_gemini(prompt: str, system_instruction: str = "") -> str:
     """Gemini API ga so'rov yuboradi va javob matnini qaytaradi."""
-    headers = {"Content-Type": "application/json"}
+    # Kalit so'rov sarlavhasida (header) yuboriladi — URL'da emas. Bu yangi
+    # "AQ." turidagi auth kalitlar bilan mos ishlaydi va kalitning
+    # loglarda/URL'da ko'rinib qolishining oldini oladi.
+    headers = {
+        "Content-Type": "application/json",
+        "x-goog-api-key": GEMINI_API_KEY,
+    }
     payload = {
         "contents": [{"parts": [{"text": prompt}]}],
     }
@@ -77,7 +83,7 @@ def ask_gemini(prompt: str, system_instruction: str = "") -> str:
 
     try:
         response = requests.post(
-            f"{GEMINI_URL}?key={GEMINI_API_KEY}",
+            GEMINI_URL,
             headers=headers,
             json=payload,
             timeout=30,
@@ -86,7 +92,9 @@ def ask_gemini(prompt: str, system_instruction: str = "") -> str:
         result = response.json()
         return result["candidates"][0]["content"]["parts"][0]["text"]
     except Exception as e:
-        logger.error(f"Gemini API xatosi: {e}")
+        # Xato matnidan API kalitni olib tashlaymiz, u hech qachon logga tushmasin.
+        safe_error = str(e).replace(GEMINI_API_KEY, "[KALIT_YASHIRILGAN]")
+        logger.error(f"Gemini API xatosi: {safe_error}")
         return "Kechirasiz, hozir AI bilan bog'lanishda xatolik yuz berdi. Birozdan so'ng qayta urinib ko'ring."
 
 
