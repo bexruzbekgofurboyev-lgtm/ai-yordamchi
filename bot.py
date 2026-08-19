@@ -204,6 +204,24 @@ async def clear_done(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None
     await update.message.reply_text(f"🗑️ {removed} ta bajarilgan vazifa tozalandi.")
 
 
+async def debug_gemini(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Vaqtinchalik diagnostika: kalit qaysi modellarga ruxsatli ekanini tekshiradi."""
+    await update.message.reply_chat_action("typing")
+    try:
+        response = requests.get(
+            "https://generativelanguage.googleapis.com/v1beta/models",
+            headers={"x-goog-api-key": GEMINI_API_KEY},
+            timeout=30,
+        )
+        safe_body = response.text.replace(GEMINI_API_KEY, "[YASHIRILGAN]")[:1500]
+        await update.message.reply_text(
+            f"Status kod: {response.status_code}\n\nJavob:\n{safe_body}"
+        )
+    except Exception as e:
+        safe_error = str(e).replace(GEMINI_API_KEY, "[YASHIRILGAN]")
+        await update.message.reply_text(f"Xato: {safe_error}")
+
+
 async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     query = update.callback_query
     await query.answer()
@@ -261,6 +279,7 @@ def main() -> None:
     app.add_handler(CommandHandler("plan", plan_task))
     app.add_handler(CommandHandler("list", list_tasks))
     app.add_handler(CommandHandler("clear", clear_done))
+    app.add_handler(CommandHandler("debug", debug_gemini))
     app.add_handler(CallbackQueryHandler(button_callback))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, chat_with_ai))
 
